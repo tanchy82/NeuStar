@@ -9,7 +9,7 @@ val log4jVersion = "2.14.1"
 
 val flink = "org.apache.flink" %% "flink-scala" % flinkVersion
 
-val flinkStreaming = "org.apache.flink" %% "flink-streaming-scala" % flinkVersion % Compile
+val flinkStreaming = "org.apache.flink" %% "flink-streaming-scala" % flinkVersion
 
 val flinkClient = "org.apache.flink" %% "flink-clients" % flinkVersion
 

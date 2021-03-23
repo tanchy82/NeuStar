@@ -15,7 +15,7 @@ class RichSourceFunctionFromSQL extends RichSourceFunction[Map[String,AnyRef]] {
 
   def getConnection(): Connection = {
     var conn: Connection = null
-    val DB_URL = "jdbc:mysql://localhost:13306/test?useUnicode=true&characterEncoding=utf8&useSSL=false&useLegacyDatetimeCode=false&serverTimezone=Asia/Shanghai"
+    val DB_URL = "jdbc:mysql://127.0.0.1:13306/test?useUnicode=true&characterEncoding=utf8&useSSL=false&useLegacyDatetimeCode=false&serverTimezone=Asia/Shanghai"
     val USER = "root"
     val PASS = "oldtan"
     try {
@@ -45,7 +45,7 @@ class RichSourceFunctionFromSQL extends RichSourceFunction[Map[String,AnyRef]] {
     while (isRUNNING) {
       val sql = "SELECT * FROM user "
       // s"UNIX_TIMESTAMP(create_time) > UNIX_TIMESTAMP('${DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss").format(LocalDateTime.now().minusMinutes(6))}')"
-
+      println(if(conn == null) "Mysql database connect fail ****")
       val ps = this.conn.prepareStatement(sql)
       val resSet = ps.executeQuery()
       while (resSet.next() && !lastKeySet(resSet.getString("id"))){
