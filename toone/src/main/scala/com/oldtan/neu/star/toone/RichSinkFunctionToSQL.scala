@@ -8,41 +8,38 @@ import org.apache.flink.streaming.api.functions.sink.RichSinkFunction
 
 
 class RichSinkFunctionToSQL extends RichSinkFunction[Map[String,AnyRef]]{
-  var ps: PreparedStatement = null
-  var conn: Connection = null
+  var conn: Option[Connection] = None
+  var ps: Option[PreparedStatement] = None
   val SQL = "insert into user_2(id,name,age,create_time) values(?,?,?,?)"
 
-  def getConnection(): Connection = {
-    var conn: Connection = null
-    val DB_URL = "jdbc:mysql://localhost:13306/test?useUnicode=true&characterEncoding=utf8&useSSL=false&useLegacyDatetimeCode=false&serverTimezone=Asia/Shanghai"
+  @throws("Due to the connect error then exit!")
+  def getConnection(): Option[Connection] = {
+    val DB_URL = "jdbc:mysql://huaweioldtan:13306/test?useUnicode=true&characterEncoding=utf8&useSSL=false&useLegacyDatetimeCode=false&serverTimezone=Asia/Shanghai"
     val USER = "root"
     val PASS = "oldtan"
-    try {
-      Class.forName("com.mysql.cj.jdbc.Driver")
-      conn = DriverManager.getConnection(DB_URL, USER, PASS)
-    } catch {
-      case _: Throwable => println("Due to the connect error then exit!")
-    }
-    conn
+    Class.forName("com.mysql.cj.jdbc.Driver")
+    Option(DriverManager.getConnection(DB_URL, USER, PASS))
   }
 
   override def open(parameters: Configuration) = {
     super.open(parameters)
     conn = this.getConnection()
-    ps = conn.prepareStatement(SQL)
+    ps = Option(conn.get.prepareStatement(SQL))
   }
 
   override def close() = {
-    if (conn != null) conn.close()
-    if (ps != null) ps.close()
+    conn.foreach(_ close)
+    ps.foreach(_ close())
   }
 
   override def invoke(d:Map[String,AnyRef]) {
-    ps.setObject(1, d.get("id").orNull)
-    ps.setObject(2, d.get("name").orNull)
-    ps.setObject(3, d.get("age").orNull)
-    ps.setTimestamp(4, Timestamp.valueOf(LocalDateTime.now()))
-    ps.executeUpdate()
+    ps.foreach(p => {
+      p.setObject(1, d.get("id").orNull)
+      p.setObject(2, d.get("name").orNull)
+      p.setObject(3, d.get("age").orNull)
+      p.setTimestamp(4, Timestamp.valueOf(LocalDateTime.now()))
+      p.executeUpdate
+    })
   }
 
 }
