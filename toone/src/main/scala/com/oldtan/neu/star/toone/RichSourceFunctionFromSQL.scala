@@ -53,7 +53,7 @@ class RichSourceFunctionFromSQL extends RichSourceFunction[Map[String,AnyRef]] {
         lastKeySet.clear
         lastKeySet++=currentSet
         currentSet.clear
-        ps.close()
+        ps.close
       })
 
       println(s"****************************${LocalDateTime.now()}")

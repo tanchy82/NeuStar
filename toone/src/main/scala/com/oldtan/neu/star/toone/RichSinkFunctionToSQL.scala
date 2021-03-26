@@ -29,7 +29,7 @@ class RichSinkFunctionToSQL extends RichSinkFunction[Map[String,AnyRef]]{
 
   override def close() = {
     conn.foreach(_ close)
-    ps.foreach(_ close())
+    ps.foreach(_ close)
   }
 
   override def invoke(d:Map[String,AnyRef]) {
