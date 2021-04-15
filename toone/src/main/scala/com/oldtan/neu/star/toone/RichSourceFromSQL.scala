@@ -1,13 +1,13 @@
 package com.oldtan.neu.star.toone
 
 import java.sql.{Connection, DriverManager, ResultSet}
+import java.time.LocalDate
 import java.time.format.DateTimeFormatter
-import java.time.{LocalDate, LocalDateTime, LocalTime}
 
 import org.apache.flink.configuration.Configuration
 import org.apache.flink.streaming.api.functions.source.{RichSourceFunction, SourceFunction}
 
-class RichSourceFunctionFromSQL extends RichSourceFunction[Map[String, AnyRef]] {
+class RichSourceFromSQL extends RichSourceFunction[Map[String, AnyRef]] {
 
   var isRUNNING: Boolean = true
   var conn: Option[Connection] = None
@@ -15,7 +15,6 @@ class RichSourceFunctionFromSQL extends RichSourceFunction[Map[String, AnyRef]] 
   @throws("Due to the connect error then exit!")
   def getConnection: Option[Connection] = {
     val DB_URL = "jdbc:oracle:thin:@10.101.37.65:1521:orcl19c"
-    //val DB_URL = "jdbc:oracle:thin:@172.22.248.135:1521:jkorcl"
     //val DB_URL = """jdbc:oracle:thin:@(DESCRIPTION =(ADDRESS_LIST=(ADDRESS=(PROTOCOL=TCP)(HOST=172.22.248.135)(PORT=1521))(LOAD_BALANCE=yes))(CONNECT_DATA=(SERVER=DEDICATED)(SERVICE_NAME=jkorcl)))"""
     val USER = "smms"
     val PASS = "smms"
@@ -28,14 +27,17 @@ class RichSourceFunctionFromSQL extends RichSourceFunction[Map[String, AnyRef]] 
     conn = getConnection
   }
 
-  override def cancel() = isRUNNING = false
+  override def cancel() = {
+    isRUNNING = false
+  }
 
   override def close() = {
     conn.foreach(_ close)
   }
 
   override def run(sourceContext: SourceFunction.SourceContext[Map[String, AnyRef]]) = {
-    var initHistoryStartDay = LocalDateTime.of(2013, 1, 27, 0, 0)
+    var initHistoryStartDay = LocalDate.of(2020, 1, 1)
+    val endHistoryStartDay = LocalDate.of(2021, 4, 14)
     val psFun = (con: Connection) => {
       con prepareStatement "SELECT a.organization_code AS ORG_CODE, " +
         "a.organization_name AS ORG_NAME," +
@@ -75,20 +77,19 @@ class RichSourceFunctionFromSQL extends RichSourceFunction[Map[String, AnyRef]] 
         " and a.domain_code = b.domain_code and a.datagenerate_date like ?"
     }
     val ps = psFun(conn.get)
-    while (isRUNNING) {
-      if ((initHistoryStartDay.toLocalDate.isBefore(LocalDate.now))
-        && (LocalTime.now.isAfter(LocalTime.of(5, 0)))) {
-        ps.setString(1, DateTimeFormatter.ofPattern("yyyyMMdd%").format(initHistoryStartDay))
-        val resSet = ps.executeQuery
-        new Iterator[ResultSet] {
-          def hasNext = resSet next
-          def next = resSet
-        }.toStream.foreach(r => {
-          sourceContext.collect((1 to r.getMetaData.getColumnCount).toIterator.map(i => (r.getMetaData.getColumnName(i), r getString i)).toMap)
-        })
-        println(initHistoryStartDay)
-        initHistoryStartDay = initHistoryStartDay plusDays 1
-      } else Thread.sleep(600000)
+    while (initHistoryStartDay.isBefore(endHistoryStartDay)) {
+      ps.setString(1, DateTimeFormatter.ofPattern("yyyyMMdd%").format(initHistoryStartDay))
+      val resSet = ps.executeQuery
+      new Iterator[ResultSet] {
+        def hasNext = resSet next
+
+        def next = resSet
+      }.toStream.foreach(r => {
+        sourceContext.collect((1 to r.getMetaData.getColumnCount).toIterator.map(i => (r.getMetaData.getColumnName(i), r getString i)).toMap)
+      })
+      println(initHistoryStartDay)
+      initHistoryStartDay = initHistoryStartDay plusDays 1
     }
+    ps.close
   }
 }
