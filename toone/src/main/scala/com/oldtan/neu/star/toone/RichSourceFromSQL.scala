@@ -7,17 +7,17 @@ import java.time.format.DateTimeFormatter
 import org.apache.flink.configuration.Configuration
 import org.apache.flink.streaming.api.functions.source.{RichSourceFunction, SourceFunction}
 
-class RichSourceFromSQL extends RichSourceFunction[Map[String, AnyRef]] {
+class RichSourceFromSQL extends RichSourceFunction[Map[String, String]] {
 
   var isRUNNING: Boolean = true
   var conn: Option[Connection] = None
 
   @throws("Due to the connect error then exit!")
   def getConnection: Option[Connection] = {
-    val DB_URL = "jdbc:oracle:thin:@10.101.37.65:1521:orcl19c"
-    //val DB_URL = """jdbc:oracle:thin:@(DESCRIPTION =(ADDRESS_LIST=(ADDRESS=(PROTOCOL=TCP)(HOST=172.22.248.135)(PORT=1521))(LOAD_BALANCE=yes))(CONNECT_DATA=(SERVER=DEDICATED)(SERVICE_NAME=jkorcl)))"""
-    val USER = "smms"
-    val PASS = "smms"
+    //val DB_URL = "jdbc:oracle:thin:@10.101.37.65:1521:orcl19c"
+    val DB_URL = """jdbc:oracle:thin:@(DESCRIPTION =(ADDRESS_LIST=(ADDRESS=(PROTOCOL=TCP)(HOST=172.22.248.135)(PORT=1521))(LOAD_BALANCE=yes))(CONNECT_DATA=(SERVER=DEDICATED)(SERVICE_NAME=jkorcl)))"""
+    val USER = "ehr"
+    val PASS = "neusoft"
     Class.forName("oracle.jdbc.driver.OracleDriver")
     Option(DriverManager.getConnection(DB_URL, USER, PASS))
   }
@@ -35,7 +35,7 @@ class RichSourceFromSQL extends RichSourceFunction[Map[String, AnyRef]] {
     conn.foreach(_ close)
   }
 
-  override def run(sourceContext: SourceFunction.SourceContext[Map[String, AnyRef]]) = {
+  override def run(sourceContext: SourceFunction.SourceContext[Map[String, String]]) = {
     var initHistoryStartDay = LocalDate.of(2020, 1, 1)
     val endHistoryStartDay = LocalDate.of(2021, 4, 14)
     val psFun = (con: Connection) => {

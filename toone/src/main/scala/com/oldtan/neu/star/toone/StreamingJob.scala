@@ -4,7 +4,6 @@ import org.apache.flink.streaming.api.environment.StreamExecutionEnvironment
 
 object StreamingJob extends App {
   val env = StreamExecutionEnvironment.getExecutionEnvironment
-  env.setParallelism(16)
   env.addSource(new RichSourceFromSQL).addSink(new RichSinkFunctionToApi)
   env.execute
 }
