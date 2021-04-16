@@ -27,10 +27,12 @@ val scalaTest = "org.scalatest" %% "scalatest" % "3.0.5" % Test
 
 val scalaj = "org.scalaj" %% "scalaj-http" % "2.4.2"
 
+val json4s = "org.json4s" %% "json4s-native" % "3.7.0-M15"
+
 lazy val toOne = (project in file("toone"))
   .settings(
     name := "NeuStar-toOne-2020-2021",
     version := "1.0",
     libraryDependencies ++= Seq(flink, flinkStreaming, flinkClient, mysql, oracle, log4j, log4jApi,log4jImpl, scalaTest,
-      scalaj)
+      scalaj, json4s)
   )
