@@ -3,22 +3,26 @@ package com.oldtan.neu.star.toone
 import java.sql.{Connection, DriverManager, ResultSet}
 import java.time.LocalDate
 import java.time.format.DateTimeFormatter
+import java.util.UUID
 
 import org.apache.flink.configuration.Configuration
 import org.apache.flink.streaming.api.functions.source.{RichSourceFunction, SourceFunction}
 
-class RichSourceFromSQL extends RichSourceFunction[Map[String, String]] {
+import scala.collection.mutable
+import scala.collection.mutable.ListBuffer
+
+class RichSourceFromSQL extends RichSourceFunction[List[Map[String, Any]]] {
 
   var isRUNNING: Boolean = true
   var conn: Option[Connection] = None
 
   @throws("Due to the connect error then exit!")
   def getConnection: Option[Connection] = {
-    val DB_URL = "jdbc:oracle:thin:@10.101.37.65:1521:orcl19c"
-    //val DB_URL = """jdbc:oracle:thin:@(DESCRIPTION =(ADDRESS_LIST=(ADDRESS=(PROTOCOL=TCP)(HOST=172.22.248.135)(PORT=1521))(LOAD_BALANCE=yes))(CONNECT_DATA=(SERVER=DEDICATED)(SERVICE_NAME=jkorcl)))"""
-    val USER = "smms"
-    val PASS = "smms"
-    Class.forName("oracle.jdbc.driver.OracleDriver")
+    //val DB_URL = "jdbc:oracle:thin:@10.101.37.65:1521:orcl19c"
+    val DB_URL = """jdbc:oracle:thin:@(DESCRIPTION =(ADDRESS_LIST=(ADDRESS=(PROTOCOL=TCP)(HOST=172.22.248.135)(PORT=1521))(LOAD_BALANCE=yes))(CONNECT_DATA=(SERVER=DEDICATED)(SERVICE_NAME=jkorcl)))"""
+    val USER = "ehr"
+    val PASS = "neusoft"
+    Class forName "oracle.jdbc.driver.OracleDriver"
     Option(DriverManager.getConnection(DB_URL, USER, PASS))
   }
 
@@ -35,9 +39,9 @@ class RichSourceFromSQL extends RichSourceFunction[Map[String, String]] {
     conn.foreach(_ close)
   }
 
-  override def run(sourceContext: SourceFunction.SourceContext[Map[String, String]]) = {
+  override def run(sourceContext: SourceFunction.SourceContext[List[Map[String, Any]]]) = {
     var initHistoryStartDay = LocalDate.of(2020, 1, 1)
-    val endHistoryStartDay = LocalDate.of(2021, 4, 14)
+    val endHistoryStartDay = LocalDate.of(2021, 4, 16)
     val psFun = (con: Connection) => {
       con prepareStatement "SELECT a.organization_code AS ORG_CODE, " +
         "a.organization_name AS ORG_NAME," +
@@ -80,16 +84,26 @@ class RichSourceFromSQL extends RichSourceFunction[Map[String, String]] {
     while (initHistoryStartDay.isBefore(endHistoryStartDay)) {
       ps.setString(1, DateTimeFormatter.ofPattern("yyyyMMdd%").format(initHistoryStartDay))
       val resSet = ps.executeQuery
+      var resultData:ListBuffer[Map[String, Any]] = mutable.ListBuffer.empty
       new Iterator[ResultSet] {
         def hasNext = resSet next
 
         def next = resSet
-      }.toStream.foreach(r => {
-        sourceContext.collect((1 to r.getMetaData.getColumnCount).toIterator.map(i => (r.getMetaData.getColumnName(i), r getString i)).toMap)
+      }.toStream
+        .foreach(r => {
+          if(resultData.length >= 2000){
+            sourceContext collect resultData.toList
+            resultData clear
+          }
+          // yichangtest tantest
+          resultData += (Map("_meta" -> Map("dataset" -> "yichangtest", "rowkey" -> UUID.randomUUID.toString)) ++
+            (1 to r.getMetaData.getColumnCount).toIterator.map(i => (r.getMetaData.getColumnName(i), r getString i)).toMap)
+          //sourceContext.collect((1 to r.getMetaData.getColumnCount).toIterator.map(i => (r.getMetaData.getColumnName(i), r getString i)).toMap)
       })
+      if (resultData.nonEmpty) sourceContext collect resultData.toList
       println(initHistoryStartDay)
       initHistoryStartDay = initHistoryStartDay plusDays 1
     }
-    ps.close
+    ps close
   }
 }

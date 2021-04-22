@@ -2,7 +2,7 @@ package com.oldtan.neu.star.toone
 
 import java.sql.{Connection, DriverManager, ResultSet}
 import java.time.format.DateTimeFormatter
-import java.time.{LocalDate, LocalDateTime, LocalTime}
+import java.time.{Duration, LocalDate, LocalDateTime, LocalTime}
 
 import org.apache.flink.configuration.Configuration
 import org.apache.flink.streaming.api.functions.source.{RichSourceFunction, SourceFunction}
@@ -75,9 +75,10 @@ class RichSourceFunctionFromSQL extends RichSourceFunction[Map[String, AnyRef]] 
         " and a.domain_code = b.domain_code and a.datagenerate_date like ?"
     }
     val ps = psFun(conn.get)
+    val start = LocalDateTime.now
     while (isRUNNING) {
       if ((initHistoryStartDay.toLocalDate.isBefore(LocalDate.now))
-        && (LocalTime.now.isAfter(LocalTime.of(5, 0)))) {
+        && (LocalTime.now.isAfter(LocalTime.of(10, 0)))) {
         ps.setString(1, DateTimeFormatter.ofPattern("yyyyMMdd%").format(initHistoryStartDay))
         val resSet = ps.executeQuery
         new Iterator[ResultSet] {
@@ -86,9 +87,11 @@ class RichSourceFunctionFromSQL extends RichSourceFunction[Map[String, AnyRef]] 
         }.toStream.foreach(r => {
           sourceContext.collect((1 to r.getMetaData.getColumnCount).toIterator.map(i => (r.getMetaData.getColumnName(i), r getString i)).toMap)
         })
-        println(initHistoryStartDay)
+        val duration = Duration.between(start, LocalDateTime.now)
+        println(s"Task start time ${start}, finish pull $initHistoryStartDay data. Overtime: ${duration.getSeconds} s")
         initHistoryStartDay = initHistoryStartDay plusDays 1
       } else Thread.sleep(600000)
     }
+    ps close
   }
 }
